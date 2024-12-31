@@ -23,3 +23,7 @@ head(nvidia_data)
 
 ```
 
+
+```{r}
+
+```
