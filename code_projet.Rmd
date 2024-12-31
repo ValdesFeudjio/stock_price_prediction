@@ -1,0 +1,25 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+# Install and load the required package
+if (!requireNamespace("quantmod", quietly = TRUE)) {
+  install.packages("quantmod")
+}
+library(quantmod)
+
+# Define the stock ticker symbol and date range
+ticker <- "NVDA"
+start_date <- "2020-01-01"
+end_date <- "2024-12-31"
+
+# Fetch the stock data from Yahoo Finance
+nvidia_data <- getSymbols(ticker, src = "yahoo", from = start_date, to = end_date, auto.assign = FALSE)
+
+# Display the first few rows of the data
+head(nvidia_data)
+
+```
+
