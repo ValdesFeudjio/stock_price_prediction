@@ -24,6 +24,86 @@ head(nvidia_data)
 ```
 
 
+
+```{r}
+# 1 - Data Preprocessing
+# Handle missing values by removing rows with NA values
+nvidia_data <- na.omit(nvidia_data)
+
+# Convert date strings to datetime objects (already done by getSymbols)
+
+# Normalize the data (optional)
+# Here we normalize the adjusted closing prices
+nvidia_data$NVDA.Adjusted <- scale(nvidia_data$NVDA.Adjusted)
+
+# Display the first few rows of the cleaned and normalized data
+head(nvidia_data)
+```
+
+
+```{r}
+# 2 - Exploratory Data Analysis (EDA)
+# Plot the opening prices
+par(mfrow = c(1, 1))
+plot(nvidia_data$NVDA.Open, main = "Opening Prices of NVDA", ylab = "Price", xlab = "Date")
+
+```
+
+
+```{r}
+par(mfrow = c(1, 1))
+# Plot the closing prices
+plot(nvidia_data$NVDA.Close, main = "Closing Prices of NVDA", ylab = "Price", xlab = "Date")
+
+
+```
+
+
+```{r}
+# Plot the high prices
+par(mfrow = c(1, 1))
+plot(nvidia_data$NVDA.High, main = "High Prices of NVDA", ylab = "Price", xlab = "Date")
+
+```
+
+
+
+```{r}
+
+# Plot the low prices
+par(mfrow = c(1, 1))
+plot(nvidia_data$NVDA.Low, main = "Low Prices of NVDA", ylab = "Price", xlab = "Date")
+```
+
+
+
+```{r}
+# Plot the volume
+par(mfrow = c(1, 1))
+plot(nvidia_data$NVDA.Volume, main = "Volume of NVDA", ylab = "Volume", xlab = "Date")
+```
+
+
+```{r}
+# Plot the normalized adjusted closing prices
+plot(nvidia_data$NVDA.Adjusted, main = "Normalized Adjusted Closing Prices of NVDA", ylab = "Normalized Price", xlab = "Date")
+```
+
+
+
+
+```{r}
+
+```
+
+
+
+```{r}
+
+```
+
+
+
 ```{r}
 
 ```
