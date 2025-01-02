@@ -21,23 +21,73 @@ nvidia_data <- getSymbols(ticker, src = "yahoo", from = start_date, to = end_dat
 # Display the first few rows of the data
 head(nvidia_data)
 
+
+nvidia_df <- data.frame(date = index(nvidia_data), coredata(nvidia_data))
+
+head(nvidia_df)
 ```
+
+1- Data Preprocessing: Clean and preprocess the data. This may involve handling missing values,converting
+date strings to datetime objects, and normalizing the data if necessary.
 
 
 
 ```{r}
-# 1 - Data Preprocessing
+
 # Handle missing values by removing rows with NA values
 nvidia_data <- na.omit(nvidia_data)
 
-# Convert date strings to datetime objects (already done by getSymbols)
+# Vérifier les valeurs manquantes pour chaque colonne
+missing_values <- sapply(nvidia_df, function(x) sum(is.na(x)))
 
-# Normalize the data (optional)
-# Here we normalize the adjusted closing prices
-nvidia_data$NVDA.Adjusted <- scale(nvidia_data$NVDA.Adjusted)
+# Afficher le nombre de valeurs manquantes par colonne
+print(missing_values)
 
-# Display the first few rows of the cleaned and normalized data
-head(nvidia_data)
+```
+
+
+```{r}
+summary(nvidia_df[-1])
+```
+
+
+```{r}
+# Installer et charger le package skimr
+
+library(skimr)
+
+# Résumé statistique
+skim(nvidia_df)
+
+```
+
+```{r}
+# Charger les bibliothèques nécessaires
+
+library(dplyr)
+
+# Convertir 'nvidia_data' en un data frame et ajouter une colonne pour l'année
+
+nvidia_df$year <- format(as.Date(nvidia_df$date), "%Y")
+
+# Résumer les données par année
+annual_summary <- nvidia_df %>%
+  group_by(year) %>%
+  summarise(
+    Open_avg = mean(NVDA.Open, na.rm = TRUE),
+    High_avg = mean(NVDA.High, na.rm = TRUE),
+    Low_avg = mean(NVDA.Low, na.rm = TRUE),
+    Close_avg = mean(NVDA.Close, na.rm = TRUE),
+    Volume_avg = mean(NVDA.Volume, na.rm = TRUE),
+    Open_max = max(NVDA.Open, na.rm = TRUE),
+    High_max = max(NVDA.High, na.rm = TRUE),
+    Low_min = min(NVDA.Low, na.rm = TRUE),
+    Close_sd = sd(NVDA.Close, na.rm = TRUE)
+  )
+
+# Afficher le résumé
+print(annual_summary)
+
 ```
 
 
@@ -45,7 +95,8 @@ head(nvidia_data)
 # 2 - Exploratory Data Analysis (EDA)
 # Plot the opening prices
 par(mfrow = c(1, 1))
-plot(nvidia_data$NVDA.Open, main = "Opening Prices of NVDA", ylab = "Price", xlab = "Date")
+plot(nvidia_df$NVDA.Open,type="l", main = "Opening Prices of NVDA", ylab = "Price", xlab = "Date",col='blue')
+grid()
 
 ```
 
@@ -53,7 +104,8 @@ plot(nvidia_data$NVDA.Open, main = "Opening Prices of NVDA", ylab = "Price", xla
 ```{r}
 par(mfrow = c(1, 1))
 # Plot the closing prices
-plot(nvidia_data$NVDA.Close, main = "Closing Prices of NVDA", ylab = "Price", xlab = "Date")
+plot(nvidia_df$NVDA.Close,type="l", main = "Closing Prices of NVDA", ylab = "Price", xlab = "Date",col='blue')
+grid()
 
 
 ```
@@ -62,7 +114,8 @@ plot(nvidia_data$NVDA.Close, main = "Closing Prices of NVDA", ylab = "Price", xl
 ```{r}
 # Plot the high prices
 par(mfrow = c(1, 1))
-plot(nvidia_data$NVDA.High, main = "High Prices of NVDA", ylab = "Price", xlab = "Date")
+plot(nvidia_df$NVDA.High,type="l", main = "High Prices of NVDA", ylab = "Price", xlab = "Date",col='blue')
+grid()
 
 ```
 
@@ -72,38 +125,232 @@ plot(nvidia_data$NVDA.High, main = "High Prices of NVDA", ylab = "Price", xlab =
 
 # Plot the low prices
 par(mfrow = c(1, 1))
-plot(nvidia_data$NVDA.Low, main = "Low Prices of NVDA", ylab = "Price", xlab = "Date")
+plot(nvidia_df$NVDA.Low,type="l", main = "Low Prices of NVDA", ylab = "Price", xlab = "Date",col='blue')
+grid()
 ```
 
+
+```{r}
+
+# Installer et charger ggplot2 si nécessaire
+library(ggplot2)
+library(reshape2)  # Pour transformer les données
+
+# Restructurer les données pour ggplot2
+nvidia_long <- melt(nvidia_df, id.vars = "date", measure.vars = c("NVDA.Open", "NVDA.High", "NVDA.Low", "NVDA.Close"))
+
+# Créer le graphique
+ggplot(nvidia_long, aes(x = date, y = value, color = variable)) +
+  geom_line() +
+  labs(
+    title = "Prix NVIDIA (Open, High, Low, Close) sur le temps",
+    x = "Date",
+    y = "Prix",
+    color = "Type de Prix"
+  ) +
+  theme_minimal()
+
+```
 
 
 ```{r}
 # Plot the volume
 par(mfrow = c(1, 1))
-plot(nvidia_data$NVDA.Volume, main = "Volume of NVDA", ylab = "Volume", xlab = "Date")
-```
-
-
-```{r}
-# Plot the normalized adjusted closing prices
-plot(nvidia_data$NVDA.Adjusted, main = "Normalized Adjusted Closing Prices of NVDA", ylab = "Normalized Price", xlab = "Date")
-```
-
-
-
-
-```{r}
-
+plot(nvidia_df$NVDA.Volume,type="l", main = "Volume of NVDA", ylab = "Volume", xlab = "Date",col='blue')
+grid()
 ```
 
 
 
 ```{r}
+# Décomposition de la série temporelle
+
+nvidia_ts <- ts(nvidia_df$NVDA.Close, frequency = 365)
+decom <- decompose(nvidia_ts)  # Spécifiez la fréquence si connue (par exemple, journalière = 365)
+
+# Affichage des graphiques de décomposition
+plot(decom, col='blue')
+grid()
 
 ```
 
 
 
 ```{r}
+tendance<-decom$trend
+plot.ts(tendance, col='blue')
+grid()
+```
+
+
+
+```{r}
+# Extraire la série sans tendance
+detrended_series <- nvidia_ts - decom$trend
+
+# Tracer la série sans tendance
+plot(detrended_series, type = "l", col = "blue", lwd = 1,
+     main = "Série sans tendance (Detrended Series)",
+     xlab = "Temps", ylab = "Valeurs ajustées")
+grid()
+```
+
+
+
+```{r}
+nvidia_ts_dif<-diff(nvidia_ts)
+plot.ts(nvidia_ts_dif, col='blue')
+grid()
+```
+
+
+
+```{r}
+acf(nvidia_ts_dif)
+```
+
+
+
+```{r}
+pacf(nvidia_ts_dif)
+```
+
+
+
+```{r}
+nvidia_ts_dif2<-diff(nvidia_ts_dif)
+plot.ts(nvidia_ts_dif2, col='blue')
+grid()
+```
+
+
+
+```{r}
+acf(nvidia_ts_dif2)
+```
+
+
+
+```{r}
+pacf(nvidia_ts_dif2)
+```
+
+
+ ajustement du modele aux données en difference premire
+```{r}
+
+
+p<-4
+q<-4
+
+AIC<-matrix(0,p,q)
+BIC<-matrix(0,p,q)
+
+
+for(i in 1:p){
+  for(j in 1:q){
+    model<-arima(nvidia_ts_dif,order = c((i-1),0,(j-1)))
+    if (Box.test(model$residuals)$p.value>0.05){
+      AIC[i,j]<-AIC(model)
+      BIC[i,j]<-BIC(model)
+    } else {
+      AIC[i,j]<-1
+      BIC[i,j]<-1
+    }
+      
+    
+  }
+}
+
+
+AIC
+
+BIC
+```
+
+
+Le modele choisi un ARMA(3,3) d'apres l'AIC sur la serie en difference première
+Le modele choisi un ARMA(1,1) d'apres le BIC sur la serie en difference première
+
+par ailleurs, ARMA(3,3) a pour AIC 4876.180 et pour BIC 4917.265
+par ailleurs, ARMA(1,1) a pour AIC 4886.115 et pour BIC 4906.657
+
+Nous allons evoluer avec le ARMA(1,1)
+ainsi notre modele est un ARIMA(1,1,1)
+
+
+
+```{r}
+# Ajustement du modèle ARIMA(1,1,1)
+arima_model <- arima(nvidia_ts, order = c(1, 1, 1))
+
+# Prévisions pour ajuster la série
+fitted_values <- nvidia_ts - residuals(arima_model)  # Valeurs ajustées
+
+# Tracé des séries
+plot(nvidia_ts, type = "l", col = "blue", lwd = 1, 
+     ylab = "Valeurs", xlab = "Temps", main = "Série d'origine et ajustée avec ARIMA(1,1,1)")
+lines(fitted_values, col = "red", lwd = 1, lty = 1)
+
+# Ajout d'une légende
+legend("toplef", legend = c("Série d'origine", "Série ajustée"), 
+       col = c("blue", "red"), lwd = 1, lty = c(1, 2))
 
 ```
+
+
+```{r}
+# Charger le package forecast (si nécessaire)
+if (!require(forecast)) install.packages("forecast")
+library(forecast)
+
+# Prédictions pour les 10 prochaines périodes
+forecast_arima <- forecast(arima_model, h = 10)
+
+# Affichage des résultats des prédictions
+print(forecast_arima)
+
+# Tracé des prédictions
+plot(forecast_arima, main = "Prédictions pour les 10 prochaines périodes avec ARIMA(1,1,1)",
+     ylab = "Valeurs", xlab = "Temps")
+
+
+```
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
