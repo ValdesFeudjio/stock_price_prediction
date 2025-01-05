@@ -160,7 +160,7 @@ plot(nvidia_df$NVDA.Volume,type="l", main = "Volume of NVDA", ylab = "Volume", x
 grid()
 ```
 
-
+TESTONS LE MODELE ARIMA
 
 ```{r}
 # Décomposition de la série temporelle
@@ -316,8 +316,282 @@ plot(forecast_arima, main = "Prédictions pour les 10 prochaines périodes avec 
 
 
 ```
+ TESTONS LE MODELE GARCH
+ 
+Dans cette partie il est question de choisir le meilleur modèle GARCH qui fit bien à nos données et de faire les prediction sur 10 périodes comme pour le modele ARIMA.
 
 ```{r}
+NVDA = nvidia_data[, "NVDA.Close", drop=F]
+
+
+```
+
+
+
+```{r}
+### 1.2. Analyses des séries de rendement 
+
+# calculate log-returns for GARCH analysis
+NVDA.ret = CalculateReturns(NVDA, method="log")
+
+
+# remove first NA observation
+NVDA.ret = NVDA.ret[-1,]
+
+colnames(NVDA.ret) ="NVDA"
+
+# plot returns
+plot(NVDA.ret, col="blue")
+```
+
+
+```{r}
+
+###1.1. Analyse des carrés des rendements et des autocorrélations
+
+# plot returns with squared and absolute returns
+par(mfrow=c(3,1))
+
+plot(NVDA.ret, main="NVDA Returns")
+
+plot(NVDA.ret^2, main="NVDA Returns^2")
+
+plot(abs(NVDA.ret), main="NVDA abs(Returns)")
+
+```
+
+
+```{r}
+# plot autocorrelations of returns, returns^2 and abs(returns)
+par(mfrow=c(3,1))
+acf(NVDA.ret, main="NVDA Returns")
+
+acf(NVDA.ret^2, main="NVDA Returns^2")
+
+acf(abs(NVDA.ret), main="NVDA abs(Returns)")
+```
+
+
+
+```{r}
+par(mfrow=c(3,1))
+pacf(NVDA.ret, main="NVDA Returns")
+
+pacf(NVDA.ret^2, main="NVDA Returns^2")
+
+pacf(abs(NVDA.ret), main="NVDA abs(Returns)")
+```
+
+
+
+```{r}
+
+#1.4. Spécification et construction des modèles
+
+# model selection on GARCH(p,q) models
+
+# lois normale
+
+
+# fit all arch models with 0 < p <= 4
+
+
+library(data.table)
+
+results_df1 <- data.table()
+
+garch.order1 = 1:3
+garch.order2 = 0:3
+
+for (p in garch.order1) {
+  for (q in garch.order2) {
+    garch_spec <- ugarchspec(mean.model = list(armaOrder = c(0, 0)), 
+                             variance.model = list(garchOrder = c(p, q), model = "sGARCH"),
+                             distribution.model = "norm")
+    garch_fit1 <- ugarchfit(spec = garch_spec, data = NVDA.ret)
+    print(garch_fit1)
+    info_criteria1 <- infocriteria(garch_fit1)
+    results_df1 <- rbind(results_df1, list(p = p, q = q, aic =info_criteria1[1] ))
+  }}
+
+library(openxlsx)
+
+write.xlsx(results_df1,"F:/valdes/school/3- ENSAI/Ecole/series temporelles/Projet serie temporelle", 
+           sheetName = "aic NVDA", rowNames = FALSE)
+
+```
+
+
+```{r}
+
+library(data.table)
+library(rugarch)
+library(openxlsx)
+
+# Initialisation de la table des résultats
+results_df1 <- data.table()
+
+# Combinaisons d'ordres GARCH
+garch.order1 <- 1:3
+garch.order2 <- 0:3
+
+# Parcours des ordres p et q
+for (p in garch.order1) {
+  for (q in garch.order2) {
+    tryCatch({
+      # Spécification du modèle GARCH
+      garch_spec <- ugarchspec(
+        mean.model = list(armaOrder = c(0, 0)), 
+        variance.model = list(garchOrder = c(p, q), model = "sGARCH"),
+        distribution.model = "norm"
+      )
+      
+      # Ajustement du modèle
+      garch_fit1 <- ugarchfit(spec = garch_spec, data = NVDA.ret)
+      
+      # Critères d'information
+      info_criteria1 <- infocriteria(garch_fit1)
+      
+      # Ajout des résultats
+      results_df1 <- rbind(
+        results_df1, 
+        list(p = p, q = q, aic = info_criteria1[1], bic = info_criteria1[2])
+      )
+    }, error = function(e) {
+      # Enregistrement des modèles échoués
+      results_df1 <- rbind(results_df1, list(p = p, q = q, aic = NA, bic = NA))
+      message(sprintf("Erreur pour p=%d, q=%d : %s", p, q, e$message))
+    })
+  }
+}
+
+# Export des résultats vers un fichier Excel
+write.xlsx(
+  results_df1,
+  file = "F:/valdes/school/3- ENSAI/Ecole/series temporelles/Projet serie temporelle/results_NVDA.xlsx",
+  sheetName = "aic_bic NVDA", 
+  rowNames = FALSE
+)
+
+
+```
+
+```{r}
+# Charger le package rugarch
+if (!require(rugarch)) install.packages("rugarch")
+library(rugarch)
+
+# Paramètres maximum pour les ordres GARCH
+P <- 5  # Maximum pour l'ordre ARCH (p)
+Q <- 5  # Maximum pour l'ordre GARCH (q)
+
+# Initialisation des matrices pour AIC et BIC
+AIC_matrix <- matrix(NA, nrow = P, ncol = Q)
+BIC_matrix <- matrix(NA, nrow = P, ncol = Q)
+
+# Parcours des ordres (p, q)
+for (p in 1:P) {
+  for (q in 1:Q) {
+    tryCatch({
+      # Spécification du modèle GARCH
+      garch_spec <- ugarchspec(
+        variance.model = list(garchOrder = c(p - 1, q - 1), model = "sGARCH"),
+        mean.model = list(armaOrder = c(0, 0), include.mean = TRUE),
+        distribution.model = "norm"
+      )
+      
+      # Ajustement du modèle GARCH
+      garch_fit <- ugarchfit(spec = garch_spec, data = NVDA.ret)
+      
+      # Extraction des résidus standardisés
+      residuals_std <- residuals(garch_fit, standardize = TRUE)
+      
+      # Test de Ljung-Box sur les résidus standardisés
+      box_test <- Box.test(residuals_std, lag = 30, type = "Ljung-Box")
+      
+      if (box_test$p.value > 0.05) {
+        # Si les résidus passent le test, enregistrer AIC et BIC
+        info_criteria <- infocriteria(garch_fit)
+        AIC_matrix[p, q] <- info_criteria["Akaike"]
+        BIC_matrix[p, q] <- info_criteria["Bayes"]
+      } else {
+        # Modèle rejeté en raison des résidus autocorrélés
+        AIC_matrix[p, q] <- -1
+        BIC_matrix[p, q] <- -1
+      }
+    }, error = function(e) {
+      # Gestion des erreurs (modèle non convergent)
+      AIC_matrix[p, q] <- NA
+      BIC_matrix[p, q] <- NA
+      message(sprintf("Erreur pour p=%d, q=%d : %s", p - 1, q - 1, e$message))
+    })
+  }
+}
+
+# Afficher les matrices AIC et BIC
+print("Matrice AIC :")
+print(AIC_matrix)
+
+print("Matrice BIC :")
+print(BIC_matrix)
+
+```
+
+
+```{r}
+# Paramètres maximum pour les ordres GARCH
+P <- 5  # Maximum pour l'ordre ARCH (p)
+Q <- 5  # Maximum pour l'ordre GARCH (q)
+
+# Initialisation des matrices pour AIC et BIC
+AIC_matrix <- matrix(NA, nrow = P, ncol = Q)
+BIC_matrix <- matrix(NA, nrow = P, ncol = Q)
+
+# Parcours des ordres (p, q)
+for (p in 1:P) {
+  for (q in 1:Q) {
+    tryCatch({
+      # Spécification du modèle GARCH
+      garch_spec <- ugarchspec(
+        variance.model = list(garchOrder = c(p - 1, q - 1), model = "sGARCH"),
+        mean.model = list(armaOrder = c(0, 0), include.mean = TRUE),
+        distribution.model = "std"
+      )
+      
+      # Ajustement du modèle GARCH
+      garch_fit <- ugarchfit(spec = garch_spec, data = NVDA.ret)
+      
+      # Extraction des résidus standardisés
+      residuals_std <- residuals(garch_fit, standardize = TRUE)
+      
+      # Test de Ljung-Box sur les résidus standardisés
+      box_test <- Box.test(residuals_std, lag = 30, type = "Ljung-Box")
+      
+      if (box_test$p.value > 0.05) {
+        # Si les résidus passent le test, enregistrer AIC et BIC
+        info_criteria <- infocriteria(garch_fit)
+        AIC_matrix[p, q] <- info_criteria["Akaike"]
+        BIC_matrix[p, q] <- info_criteria["Bayes"]
+      } else {
+        # Modèle rejeté en raison des résidus autocorrélés
+        AIC_matrix[p, q] <- -1
+        BIC_matrix[p, q] <- -1
+      }
+    }, error = function(e) {
+      # Gestion des erreurs (modèle non convergent)
+      AIC_matrix[p, q] <- NA
+      BIC_matrix[p, q] <- NA
+      message(sprintf("Erreur pour p=%d, q=%d : %s", p - 1, q - 1, e$message))
+    })
+  }
+}
+
+# Afficher les matrices AIC et BIC
+print("Matrice AIC :")
+print(AIC_matrix)
+
+print("Matrice BIC :")
+print(BIC_matrix)
 
 ```
 
@@ -327,19 +601,10 @@ plot(forecast_arima, main = "Prédictions pour les 10 prochaines périodes avec 
 ```
 
 
-```{r}
-
-```
-
 
 ```{r}
 
 ```
-
-
-
-
-
 
 
 
